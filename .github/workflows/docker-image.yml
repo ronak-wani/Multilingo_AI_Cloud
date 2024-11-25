@@ -40,34 +40,17 @@ jobs:
       # Push the Docker image to Docker Hub
       - name: Push Docker image to Docker Hub
         run: docker push ronakwani/rvwani:latest
+        
+      # Log in to Azure
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       # Deploy to Azure Container Apps
       - name: Deploy to Azure Container Apps
-        uses: azure/cli@v1
-        with:
-          azcliversion: latest
-          inlineScript: |
-            az login --service-principal --username ${{ secrets.AZURE_CLIENT_ID }} --password ${{ secrets.AZURE_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
-            az containerapp update --name <YourContainerAppName> \
-              --resource-group <YourResourceGroup> \
-              --image ronakwani/rvwani:latest \
-              --env-vars GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
-
-      # Clean up old Azure resources
-      - name: Cleanup unused Azure resources
-        uses: azure/cli@v1
-        with:
-          azcliversion: latest
-          inlineScript: |
-            az login --service-principal --username ${{ secrets.AZURE_CLIENT_ID }} --password ${{ secrets.AZURE_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
-            # Delete unused container app revisions
-            az containerapp revision list --name <YourContainerAppName> \
-              --resource-group <YourResourceGroup> \
-              --query "[?properties.active==\`false\`].name" -o tsv | while read -r revision; do
-              az containerapp revision delete --name <YourContainerAppName> \
-                --resource-group <YourResourceGroup> \
-                --revision "$revision"
-            done
-
-            # Optional: Remove stopped/unused container apps (uncomment to use)
-            # az containerapp delete --name <YourContainerAppName> --resource-group <YourResourceGroup> --yes
+        run: |
+          az containerapp update --name cs-553-ronak-multilingo-ai\
+            --resource-group wpi-asc-export \
+            --image ronakwani/rvwani:latest \
+            --env-vars GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
