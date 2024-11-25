@@ -53,4 +53,4 @@ jobs:
           az containerapp update --name cs-553-ronak-multilingo-ai\
             --resource-group wpi-asc-export \
             --image ronakwani/rvwani:latest \
-            --env-vars GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            --set-env-vars GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
