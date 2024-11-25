@@ -50,7 +50,10 @@ jobs:
       # Deploy to Azure Container Apps
       - name: Deploy to Azure Container Apps
         run: |
-          az containerapp update --name cs-553-ronak-multilingo-ai\
+          az containerapp create --name cs-553-ronak-multilingo-ai\
             --resource-group wpi-asc-export \
             --image ronakwani/rvwani:latest \
-            --set-env-vars GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            --cpu 0.5 \
+            --memory 1.0Gi \
+            --ingress external --target-port 8010 \
+            --env-vars GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
