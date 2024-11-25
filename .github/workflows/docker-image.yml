@@ -52,6 +52,7 @@ jobs:
         run: |
           az containerapp create --name cs-553-ronak-multilingo-ai\
             --resource-group wpi-asc-export \
+            --environment managedEnvironment-WPIascexport-a5a3 \
             --image ronakwani/rvwani:latest \
             --cpu 0.5 \
             --memory 1.0Gi \
