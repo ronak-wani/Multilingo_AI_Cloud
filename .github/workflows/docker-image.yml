@@ -1,0 +1,73 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # Delete existing Docker image (if it exists)
+      - name: Remove existing Docker image from Docker Hub
+        run: |
+          if docker manifest inspect ronakwani/rvwani:latest > /dev/null 2>&1; then
+            echo "Image exists. Deleting..."
+            curl -X DELETE -u "${{ secrets.DOCKER_USERNAME }}:${{ secrets.DOCKER_PASSWORD }}" \
+            "https://hub.docker.com/v2/repositories/ronakwani/rvwani/tags/latest/"
+          else
+            echo "No existing image found."
+          fi
+
+      # Build the Docker image
+      - name: Build Docker image
+        run: docker build --rm -f Dockerfile -t ronakwani/rvwani:latest .
+
+      # Push the Docker image to Docker Hub
+      - name: Push Docker image to Docker Hub
+        run: docker push ronakwani/rvwani:latest
+
+      # Deploy to Azure Container Apps
+      - name: Deploy to Azure Container Apps
+        uses: azure/cli@v1
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az login --service-principal --username ${{ secrets.AZURE_CLIENT_ID }} --password ${{ secrets.AZURE_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
+            az containerapp update --name <YourContainerAppName> \
+              --resource-group <YourResourceGroup> \
+              --image ronakwani/rvwani:latest \
+              --env-vars GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+
+      # Clean up old Azure resources
+      - name: Cleanup unused Azure resources
+        uses: azure/cli@v1
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az login --service-principal --username ${{ secrets.AZURE_CLIENT_ID }} --password ${{ secrets.AZURE_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
+            # Delete unused container app revisions
+            az containerapp revision list --name <YourContainerAppName> \
+              --resource-group <YourResourceGroup> \
+              --query "[?properties.active==\`false\`].name" -o tsv | while read -r revision; do
+              az containerapp revision delete --name <YourContainerAppName> \
+                --resource-group <YourResourceGroup> \
+                --revision "$revision"
+            done
+
+            # Optional: Remove stopped/unused container apps (uncomment to use)
+            # az containerapp delete --name <YourContainerAppName> --resource-group <YourResourceGroup> --yes
