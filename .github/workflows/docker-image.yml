@@ -1,0 +1,60 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # Delete existing Docker image (if it exists)
+      - name: Remove existing Docker image from Docker Hub
+        run: |
+          if docker manifest inspect ronakwani/rvwani:latest > /dev/null 2>&1; then
+            echo "Image exists. Deleting..."
+            curl -X DELETE -u "${{ secrets.DOCKER_USERNAME }}:${{ secrets.DOCKER_PASSWORD }}" \
+            "https://hub.docker.com/v2/repositories/ronakwani/rvwani/tags/latest/"
+          else
+            echo "No existing image found."
+          fi
+
+      # Build the Docker image
+      - name: Build Docker image
+        run: docker build --rm -f Dockerfile -t ronakwani/rvwani:latest .
+
+      # Push the Docker image to Docker Hub
+      - name: Push Docker image to Docker Hub
+        run: docker push ronakwani/rvwani:latest
+        
+      # Log in to Azure
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Deploy to Azure Container Apps
+      - name: Deploy to Azure Container Apps
+        run: |
+          az containerapp create --name cs-553-ronak-multilingo-ai\
+            --resource-group wpi-asc-export \
+            --environment managedEnvironment-WPIascexport-a5a \
+            --image ronakwani/rvwani:latest \
+            --cpu 0.5 \
+            --memory 1.0Gi \
+            --ingress external --target-port 8010 \
+            --env-vars GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
