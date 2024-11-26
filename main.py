@@ -1,5 +1,4 @@
-
-
+from fastapi.staticfiles import StaticFiles
 import nest_asyncio
 from starlette.responses import FileResponse
 import os
@@ -33,7 +32,7 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-
+app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/")
 async def root():
     return FileResponse('index.html')
