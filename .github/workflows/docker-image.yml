@@ -47,6 +47,15 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      # Create Azure Container App Environment
+      - name: Create Azure Container App Environment
+        run: |
+          az containerapp env create --name env \
+            --resource-group wpi-asc-export \
+            --location eastus \
+            --logs-workspace-id ${{ secrets.LOG_ANALYTICS_ID }} \
+            --logs-workspace-key ${{ secrets.LOG_ANALYTICS_KEY }}
+
       # Deploy to Azure Container Apps
       - name: Deploy to Azure Container Apps
         run: |
